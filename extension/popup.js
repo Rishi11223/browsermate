@@ -4,6 +4,8 @@ const connectBtn = document.getElementById("connectBtn");
 const disconnectBtn = document.getElementById("disconnectBtn");
 const tabInfo = document.getElementById("tabInfo");
 const logBox = document.getElementById("logBox");
+const profileInput = document.getElementById("profileInput");
+const profileBtn = document.getElementById("profileBtn");
 
 const tabs = document.querySelectorAll(".tab");
 const panels = {
@@ -22,9 +24,9 @@ tabs.forEach((tab) => {
   });
 });
 
-function setStatus(connected) {
+function setStatus(connected, profile) {
   dot.className = "dot " + (connected ? "connected" : "disconnected");
-  statusText.textContent = connected ? "Connected" : "Disconnected";
+  statusText.textContent = connected ? "Connected" + (profile ? " (" + profile + ")" : "") : "Disconnected";
   connectBtn.style.display = connected ? "none" : "block";
   disconnectBtn.style.display = connected ? "block" : "none";
 }
@@ -47,8 +49,8 @@ function updateTabInfo() {
 
 chrome.runtime.onMessage.addListener((msg) => {
   if (msg.type === "status") {
-    setStatus(msg.connected);
-    addLog(msg.connected ? "Connected to bridge" : "Disconnected from bridge");
+    setStatus(msg.connected, msg.profile);
+    addLog(msg.connected ? "Connected to bridge" + (msg.profile ? " as \"" + msg.profile + "\"" : "") : "Disconnected from bridge");
   }
   if (msg.type === "log") {
     addLog("[bg] " + msg.message);
@@ -76,6 +78,20 @@ disconnectBtn.addEventListener("click", () => {
   addLog("Disconnected");
 });
 
+// Load and save profile name
+chrome.storage.local.get(["profileName"], (data) => {
+  profileInput.value = data.profileName || "default";
+});
+profileBtn.addEventListener("click", () => {
+  const name = profileInput.value.trim() || "default";
+  chrome.storage.local.set({ profileName: name });
+  chrome.runtime.sendMessage({ type: "setProfile", profile: name });
+  addLog("Profile set to: " + name);
+});
+profileInput.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") profileBtn.click();
+});
+
 // Keep service worker alive while popup is open
 const port = chrome.runtime.connect({ name: "keepAlive" });
 
@@ -93,7 +109,10 @@ document.getElementById("onboardDone").addEventListener("click", () => {
 
 // Get real connection status from background
 chrome.runtime.sendMessage({ type: "getStatus" }, (status) => {
-  setStatus(!!(status && status.connected));
+  if (status) {
+    setStatus(!!status.connected);
+    if (status.profile) profileInput.value = status.profile;
+  }
 });
 
 updateTabInfo();

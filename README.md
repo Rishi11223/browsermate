@@ -86,16 +86,47 @@ fetch("http://localhost:3001/click", {
 })
 ```
 
+## Multi-Profile Support
+
+Run BrowseMate in multiple Chrome profiles simultaneously. Each profile sets its own name.
+
+### Setting a profile name
+
+1. Open the extension popup
+2. Type a name in the profile field (e.g. "work", "personal", "school")
+3. Click **Set** — the extension reconnects with that name
+
+### Targeting a profile
+
+Add `"profile": "name"` to any command to route it to a specific profile:
+
+```bash
+curl -X POST http://localhost:3001/navigate \
+  -H "Content-Type: application/json" \
+  -d '{"url":"https://gmail.com", "profile": "work"}'
+```
+
+If no profile is specified, it defaults to `"default"`.
+
+### Seeing connected profiles
+
+Send a command with an unknown profile and the server lists available ones:
+
+```bash
+curl -X POST http://localhost:3001/navigate -H "Content-Type: application/json" -d '{"url":"https://x.com"}'
+# Returns: {"error":"Extension not connected for profile: default", "profiles": ["work", "personal"]}
+```
+
 ## Endpoints
 
 | POST | Params | Description |
 |------|--------|-------------|
-| `/navigate` | `{url}` | Go to a URL |
-| `/click` | `{selector}` | Click element |
-| `/type` | `{selector, text}` | Type into input |
-| `/extract` | `{selector, attr}` | Extract data |
-| `/screenshot` | `{}` | Capture screenshot |
-| `/eval` | `{code}` | Run JavaScript |
+| `/navigate` | `{url, profile?}` | Go to a URL |
+| `/click` | `{selector, profile?}` | Click element |
+| `/type` | `{selector, text, profile?}` | Type into input |
+| `/extract` | `{selector, attr, profile?}` | Extract data |
+| `/screenshot` | `{profile?}` | Capture screenshot |
+| `/eval` | `{code, profile?}` | Run JavaScript |
 
 ## Use Cases
 

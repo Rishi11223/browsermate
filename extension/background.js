@@ -2,6 +2,12 @@ const WS_URL = "ws://127.0.0.1:3002";
 let ws = null;
 let reconnectTimer = null;
 let tabStates = {};
+let profileName = "default";
+
+// Load saved profile name
+chrome.storage.local.get(["profileName"], (data) => {
+  if (data.profileName) profileName = data.profileName;
+});
 
 function connect() {
   if (ws && (ws.readyState === 0 || ws.readyState === 1)) return;
@@ -14,16 +20,18 @@ function connect() {
   }
 
   ws.onopen = () => {
-    console.log("[agent] WebSocket connected");
+    console.log("[agent] WebSocket connected as:", profileName);
     chrome.storage.local.set({ connected: true });
-    notifyPopup({ type: "status", connected: true });
+    notifyPopup({ type: "status", connected: true, profile: profileName });
+    // Register profile name with server
+    ws.send(JSON.stringify({ type: "register", profile: profileName }));
     startHeartbeat();
   };
 
   ws.onclose = () => {
     console.log("[agent] WebSocket disconnected");
     chrome.storage.local.set({ connected: false });
-    notifyPopup({ type: "status", connected: false });
+    notifyPopup({ type: "status", connected: false, profile: profileName });
     stopHeartbeat();
     ws = null;
     scheduleReconnect();
@@ -261,7 +269,15 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     sendResponse({ ok: true });
   }
   if (msg.type === "getStatus") {
-    sendResponse({ connected: !!(ws && ws.readyState === 1) });
+    sendResponse({ connected: !!(ws && ws.readyState === 1), profile: profileName });
+  }
+  if (msg.type === "setProfile") {
+    profileName = msg.profile || "default";
+    chrome.storage.local.set({ profileName });
+    // If connected, reconnect with new profile
+    if (ws) { ws.close(); ws = null; }
+    connect();
+    sendResponse({ ok: true, profile: profileName });
   }
   return true;
 });
