@@ -345,27 +345,39 @@ async function cmdEval(params) {
 
 async function cmdScan(params) {
   const tab = await getActiveTab();
-  return await execInTab(tab.id, () => {
+  const reqId = Date.now() + Math.random();
+  return await execInTab(tab.id, (rid) => {
     return new Promise((resolve) => {
-      chrome.runtime.sendMessage({ type: "scanPage" }, (response) => {
-        resolve(response?.registry || []);
-      });
+      const handler = (event) => {
+        if (event.source !== window || !event.data || !event.data._bm || event.data.type !== "scanResult" || event.data.id !== rid) return;
+        window.removeEventListener("message", handler);
+        resolve(event.data.registry || []);
+      };
+      window.addEventListener("message", handler);
+      window.postMessage({ _bm: true, type: "scanPage", id: rid }, "*");
+      setTimeout(() => { window.removeEventListener("message", handler); resolve([]); }, 5000);
     });
-  });
+  }, [reqId]);
 }
 
 async function cmdClickById(params) {
   const tab = await getActiveTab();
   const id = params.id;
   if (id === undefined) throw new Error("Element ID required");
+  const reqId = Date.now() + Math.random();
 
-  return await execInTab(tab.id, (elId) => {
+  return await execInTab(tab.id, (elId, rid) => {
     return new Promise((resolve) => {
-      chrome.runtime.sendMessage({ type: "clickById", id: elId }, (response) => {
-        resolve(response || { error: "No response" });
-      });
+      const handler = (event) => {
+        if (event.source !== window || !event.data || !event.data._bm || event.data.type !== "clickResult" || event.data.id !== rid) return;
+        window.removeEventListener("message", handler);
+        resolve(event.data.result ? { clicked: event.data.result } : { error: event.data.error });
+      };
+      window.addEventListener("message", handler);
+      window.postMessage({ _bm: true, type: "clickById", id: elId, rid: rid }, "*");
+      setTimeout(() => { window.removeEventListener("message", handler); resolve({ error: "Timeout" }); }, 5000);
     });
-  }, [id]);
+  }, [id, reqId]);
 }
 
 // Keep extension alive with self-healing heartbeat

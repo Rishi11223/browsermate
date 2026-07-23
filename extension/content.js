@@ -145,41 +145,28 @@
     subtree: true,
   });
 
-  // Listen for commands from background script
-  chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+  // Listen for commands from injected scripts via postMessage
+  window.addEventListener("message", (event) => {
+    if (event.source !== window) return;
+    const msg = event.data;
+    if (!msg || !msg._bm) return;
+
     if (msg.type === "scanPage") {
       const registry = scanPage();
-      sendResponse({ registry });
+      window.postMessage({ _bm: true, type: "scanResult", id: msg.id, registry }, "*");
     }
     if (msg.type === "clickById") {
       const el = findElementById(msg.id);
       if (!el) {
-        // Rescan and try again
-        const registry = scanPage();
-        const entry = registry.find(e => e.id === msg.id);
-        if (!entry) { sendResponse({ error: "Element not found" }); return; }
-        // Build selector from shadowPath and find element
-        const path = entry.selector.split(" >>>> ");
-        let root = document;
-        for (const sel of path) {
-          const found = root.querySelector(sel);
-          if (!found) { sendResponse({ error: "Element vanished" }); return; }
-          root = found.shadowRoot || found;
-        }
-        root.click();
-        sendResponse({ clicked: entry.text.slice(0, 50) });
+        window.postMessage({ _bm: true, type: "clickResult", id: msg.id, error: "Element not found" }, "*");
         return;
       }
       el.scrollIntoView({ behavior: "instant", block: "center" });
       el.dispatchEvent(new MouseEvent("mousedown", { bubbles: true, cancelable: true, view: window }));
       el.dispatchEvent(new MouseEvent("mouseup", { bubbles: true, cancelable: true, view: window }));
       el.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true, view: window }));
-      sendResponse({ clicked: (el.textContent || el.value || "").trim().slice(0, 50) });
+      window.postMessage({ _bm: true, type: "clickResult", id: msg.id, result: (el.textContent || el.value || "").trim().slice(0, 50) }, "*");
     }
-    if (msg.type === "getRegistrySize") {
-      sendResponse({ size: elements.size });
-    }
-    return true;
   });
 
   console.log("[bm-content] Element registry ready");
