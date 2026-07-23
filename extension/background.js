@@ -196,7 +196,13 @@ async function cmdClick(params) {
     const el = deepSearch(document, sel);
     if (!el) throw new Error(`Element not found: ${sel}`);
     el.scrollIntoView({ behavior: "instant", block: "center" });
-    el.click();
+    try {
+      el.dispatchEvent(new MouseEvent("mousedown", { bubbles: true, cancelable: true, view: window }));
+      el.dispatchEvent(new MouseEvent("mouseup", { bubbles: true, cancelable: true, view: window }));
+      el.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true, view: window }));
+    } catch(e) {
+      el.click();
+    }
     return { clicked: sel, tag: el.tagName, text: (el.textContent || "").trim().slice(0, 100) };
   }, [selector]);
 }
