@@ -1,4 +1,5 @@
 node_modules/
+*.exe
 *.pem
 *.crx
 .env

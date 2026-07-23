@@ -176,20 +176,22 @@
         <div style="background:#1a1a2e;border:1px solid #3a3a5a;border-radius:4px;padding:8px;margin-top:6px;font-size:10px;font-family:monospace;color:#aaa;word-break:break-all;line-height:1.6;max-height:200px;overflow-y:auto;cursor:pointer" id="promptBlock" onclick="navigator.clipboard.writeText(this.textContent.trim()).then(()=>{document.querySelector('#promptBlock').style.borderColor='#4caf50';setTimeout(()=>{document.querySelector('#promptBlock').style.borderColor='#3a3a5a'},2000)}).catch(()=>{})" title="Click to copy">
 I have a Chrome extension called BrowseMate installed that lets you control my browser.
 
-HOW TO CONNECT:
-1. A bridge server is already running on my computer at http://localhost:3001 (HTTP) and ws://localhost:3002 (WebSocket)
-2. The extension is connected to the bridge via WebSocket
-3. Just send HTTP POST requests to http://localhost:3001 and they will be forwarded to my browser through the extension
+SETUP - Do this first:
+1. The BrowseMate bridge server is at: C:\Users\Risha\AppData\Local\Temp\opencode\browsermate\server\browsermate-server.exe
+   Start it by running that exe, OR if you have Node.js: cd to that folder and run: node server.js
+2. Wait for the server to start (it listens on port 3001 and 3002)
+3. Make sure the BrowseMate extension popup shows "Connected" (green dot)
+4. Then send HTTP POST requests to http://localhost:3001
 
-END POINTS:
-- POST /navigate with {"url": "https://..."} - go to a page
-- POST /click with {"selector": "css-selector"} - click an element
-- POST /type with {"selector": "css", "text": "value"} - type into an input
-- POST /extract with {"selector": "css", "attr": "textContent"} - get data from elements
-- POST /screenshot with {} - capture the page as PNG
-- POST /eval with {"code": "js-code"} - run JavaScript in the page
+ENDPOINTS:
+- POST /navigate {"url": "..."} - go to a page
+- POST /click {"selector": "..."} - click an element
+- POST /type {"selector": "...", "text": "..."} - type into an input
+- POST /extract {"selector": "...", "attr": "..."} - get data from elements
+- POST /screenshot {} - capture the page
+- POST /eval {"code": "..."} - run JavaScript in the page
 
-The bridge is ready. Start sending commands now.
+The server needs to be running first. Start it, then send commands.
         </div>
         <div style="font-size:10px;color:#666;margin-top:4px">Click the box above to copy</div>
       </div>
