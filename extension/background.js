@@ -276,12 +276,26 @@ async function cmdExtract(params) {
 
 async function cmdScreenshot(params) {
   const tab = await getActiveTab();
-  return new Promise((resolve, reject) => {
-    chrome.tabs.captureVisibleTab(tab.windowId, { format: "png" }, (dataUrl) => {
-      if (chrome.runtime.lastError) reject(new Error(chrome.runtime.lastError.message));
-      else resolve({ dataUrl });
-    });
-  });
+  // Retry up to 3 times
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      const dataUrl = await new Promise((resolve, reject) => {
+        // Ensure tab is active
+        chrome.tabs.update(tab.id, { active: true }, () => {
+          setTimeout(() => {
+            chrome.tabs.captureVisibleTab(tab.windowId, { format: "png" }, (d) => {
+              if (chrome.runtime.lastError) reject(new Error(chrome.runtime.lastError.message));
+              else resolve(d);
+            });
+          }, 500);
+        });
+      });
+      if (dataUrl && dataUrl.length > 100) return { dataUrl };
+    } catch(e) {
+      if (attempt === 2) throw e;
+      await new Promise(r => setTimeout(r, 1000));
+    }
+  }
 }
 
 async function cmdEval(params) {
