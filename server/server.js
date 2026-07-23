@@ -1,188 +1,79 @@
-const { createServer } = require("http");
+const http = require("http");
 const { WebSocketServer } = require("ws");
+const fs = require("fs");
 
-const HTTP_PORT = 3001;
-const WS_PORT = 3002;
+const LOG = "server.log";
+function log(m) { const l=`[${new Date().toISOString()}] ${m}\n`; process.stdout.write(l); fs.appendFileSync(LOG, l); }
 
+process.on("uncaughtException", e => log(`FATAL: ${e.message}\n${e.stack}`));
+process.on("unhandledRejection", r => log(`FATAL: ${r}`));
+
+let extWs = null;
+let rid = 0;
 const pending = new Map();
-let requestId = 0;
 
-function sendToExtension(ws, msg) {
-  if (ws && ws.readyState === 1) {
-    ws.send(JSON.stringify(msg));
-    return true;
-  }
-  return false;
-}
-
-function createRequest(type, params) {
-  const id = ++requestId;
-  const msg = { id, type, params };
-  return { id, msg };
-}
-
-// ---- HTTP server (opencode sends commands here) ----
-const httpServer = createServer((req, res) => {
-  const headers = {
-    "Access-Control-Allow-Origin": "*",
-    "Access-Control-Allow-Methods": "POST, OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type",
-  };
-
-  if (req.method === "OPTIONS") {
-    res.writeHead(204, headers);
-    res.end();
-    return;
-  }
-
-  if (req.method !== "POST") {
-    res.writeHead(405, headers);
-    res.end(JSON.stringify({ error: "Method not allowed" }));
-    return;
-  }
+const httpServer = http.createServer((req, res) => {
+  const cors = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Methods": "POST, OPTIONS", "Access-Control-Allow-Headers": "Content-Type" };
+  if (req.method === "OPTIONS") { res.writeHead(204, cors); res.end(); return; }
+  if (req.method !== "POST") { res.writeHead(405, cors); res.end("{}"); return; }
 
   let body = "";
-  req.on("error", (err) => {
-    console.error("[server] Request error:", err.message);
-  });
-  req.on("data", (chunk) => (body += chunk));
+  req.on("data", c => body += c);
   req.on("end", () => {
     let parsed;
+    try { parsed = JSON.parse(body); } catch { res.writeHead(400, cors); res.end(JSON.stringify({error:"Invalid JSON"})); return; }
+
+    const method = ({ "/navigate":"navigate","/click":"click","/type":"type","/extract":"extract","/screenshot":"screenshot","/eval":"eval" })[req.url];
+    if (!method) { res.writeHead(404, cors); res.end(JSON.stringify({error:"Unknown"})); return; }
+
+    if (!extWs || extWs.readyState !== 1) { res.writeHead(503, cors); res.end(JSON.stringify({error:"Extension not connected"})); return; }
+
+    const id = ++rid;
+    const msg = JSON.stringify({ id, type: method, params: parsed });
+
+    pending.set(id, { res, cors });
+    const t = setTimeout(() => { if (pending.delete(id)) { res.writeHead(504, cors); res.end(JSON.stringify({error:"Timeout"})); } }, 15000);
+
     try {
-      parsed = JSON.parse(body);
-    } catch {
-      res.writeHead(400, headers);
-      res.end(JSON.stringify({ error: "Invalid JSON" }));
-      return;
-    }
-
-    const method = req.url === "/navigate"
-      ? "navigate"
-      : req.url === "/click"
-        ? "click"
-        : req.url === "/type"
-          ? "type"
-          : req.url === "/extract"
-            ? "extract"
-            : req.url === "/screenshot"
-              ? "screenshot"
-              : req.url === "/eval"
-                ? "eval"
-                : null;
-
-    if (!method) {
-      res.writeHead(404, headers);
-      res.end(JSON.stringify({ error: "Unknown endpoint" }));
-      return;
-    }
-
-    if (!global.extensionWs) {
-      res.writeHead(503, headers);
-      res.end(JSON.stringify({ error: "Extension not connected" }));
-      return;
-    }
-
-    const { id, msg } = createRequest(method, parsed);
-
-    pending.set(id, { res, headers });
-    const timeout = setTimeout(() => {
+      extWs.send(msg);
+      log(`Sent: id=${id} type=${method}`);
+    } catch (e) {
+      clearTimeout(t);
       pending.delete(id);
-      res.writeHead(504, headers);
-      res.end(JSON.stringify({ error: "Timeout" }));
-    }, 30000);
-
-    msg._timeout = timeout;
-    console.log("[server] Sending to extension, ws state:", global.extensionWs?.readyState, "pending:", pending.size);
-    if (!sendToExtension(global.extensionWs, msg)) {
-      console.log("[server] sendToExtension failed");
-      clearTimeout(timeout);
-      pending.delete(id);
-      res.writeHead(503, headers);
-      res.end(JSON.stringify({ error: "Extension disconnected" }));
-    } else {
-      console.log("[server] Sent to extension, waiting for response...");
+      res.writeHead(503, cors); res.end(JSON.stringify({error:"Send failed"}));
+      log(`Send failed: ${e.message}`);
     }
   });
 });
 
-httpServer.listen(HTTP_PORT, () => {
-  console.log(`[server] HTTP bridge on http://localhost:${HTTP_PORT}`);
-  console.log(`[server] Endpoints: POST /navigate /click /type /extract /screenshot /eval`);
-});
+httpServer.listen(3001, () => log("HTTP on :3001"));
 
-// ---- WebSocket server (extension connects here) ----
-const wsServer = new WebSocketServer({ port: WS_PORT });
-
-wsServer.on("connection", (ws) => {
-  console.log("[server] Extension connected");
-
-  if (global.extensionWs && global.extensionWs.readyState === 1) {
-    global.extensionWs.close();
-  }
-  global.extensionWs = ws;
-
-  ws.send(JSON.stringify({ type: "connected", message: "Bridge established" }));
+const wss = new WebSocketServer({ port: 3002 });
+wss.on("connection", (ws) => {
+  log("Extension connected");
+  if (extWs && extWs.readyState === 1) try { extWs.close(); } catch(e) {}
+  extWs = ws;
+  ws.send(JSON.stringify({ type: "connected", message: "OK" }));
 
   ws.on("message", (raw) => {
-    let data;
-    try {
-      data = JSON.parse(raw.toString());
-    } catch {
-      return;
+    let d;
+    try { d = JSON.parse(raw.toString()); } catch { return; }
+    if (d.type === "ping") { ws.send(JSON.stringify({type:"pong"})); return; }
+    if (d.type === "result" && d.id) {
+      const e = pending.get(d.id);
+      if (e) { clearTimeout(e._timeout); pending.delete(d.id); e.res.writeHead(200, e.cors); e.res.end(JSON.stringify({success:true, result:d.result})); log(`Result: id=${d.id}`); }
     }
-
-    if (data.type === "result" && data.id) {
-      const entry = pending.get(data.id);
-      if (entry) {
-        clearTimeout(data._timeout);
-        const { res, headers } = entry;
-        pending.delete(data.id);
-        res.writeHead(200, headers);
-        res.end(JSON.stringify({ success: true, result: data.result }));
-      }
-    }
-
-    if (data.type === "error" && data.id) {
-      const entry = pending.get(data.id);
-      if (entry) {
-        clearTimeout(data._timeout);
-        const { res, headers } = entry;
-        pending.delete(data.id);
-        res.writeHead(200, headers);
-        res.end(JSON.stringify({ success: false, error: data.error }));
-      }
-    }
-
-    if (data.type === "ping") {
-      ws.send(JSON.stringify({ type: "pong" }));
-      return;
-    }
-
-    if (data.type === "log") {
-      console.log(`[extension] ${data.message}`);
+    if (d.type === "error" && d.id) {
+      const e = pending.get(d.id);
+      if (e) { clearTimeout(e._timeout); pending.delete(d.id); e.res.writeHead(200, e.cors); e.res.end(JSON.stringify({success:false, error:d.error})); log(`Error: id=${d.id} ${d.error}`); }
     }
   });
 
   ws.on("close", () => {
-    console.log("[server] Extension disconnected");
-    if (global.extensionWs === ws) {
-      global.extensionWs = null;
-    }
-    for (const [id, entry] of pending) {
-      clearTimeout(entry._timeout);
-      entry.res.writeHead(503, { "Access-Control-Allow-Origin": "*" });
-      entry.res.end(JSON.stringify({ error: "Extension disconnected" }));
-      pending.delete(id);
-    }
+    log("Extension disconnected");
+    if (extWs === ws) extWs = null;
+    for (const [id, e] of pending) { clearTimeout(e._timeout); e.res.writeHead(503, e.cors); e.res.end(JSON.stringify({error:"Disc"})); pending.delete(id); }
   });
 });
 
-process.on("uncaughtException", (err) => {
-  console.error("[server] UNCAUGHT:", err.message, err.stack?.slice(0, 200));
-});
-
-process.on("unhandledRejection", (err) => {
-  console.error("[server] UNHANDLED:", err.message);
-});
-
-console.log(`[server] WebSocket on ws://localhost:${WS_PORT}`);
+log(`WS on :3002`);
