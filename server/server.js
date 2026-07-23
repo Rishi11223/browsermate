@@ -34,6 +34,31 @@ const httpServer = http.createServer((req, res) => {
     let parsed;
     try { parsed = JSON.parse(body); } catch { res.writeHead(400, cors); res.end(JSON.stringify({error:"Invalid JSON"})); return; }
 
+    // Handle autostart endpoint (no extension needed)
+    if (req.url === "/autostart") {
+      const action = parsed.action;
+      const startupDir = require("path").join(process.env.APPDATA, "Microsoft", "Windows", "Start Menu", "Programs", "Startup");
+      const batPath = require("path").join(startupDir, "browsermate-server.bat");
+      const exePath = process.argv[1] || process.argv[0];  // pkg exe or node script
+      try {
+        if (action === "enable") {
+          require("fs").writeFileSync(batPath, `@echo off\nstart "" "${exePath}"\n`, "utf8");
+          res.writeHead(200, cors); res.end(JSON.stringify({success:true, message:"Auto-start enabled"}));
+        } else if (action === "disable") {
+          if (require("fs").existsSync(batPath)) require("fs").unlinkSync(batPath);
+          res.writeHead(200, cors); res.end(JSON.stringify({success:true, message:"Auto-start disabled"}));
+        } else if (action === "status") {
+          const enabled = require("fs").existsSync(batPath);
+          res.writeHead(200, cors); res.end(JSON.stringify({success:true, enabled, startupPath: batPath}));
+        } else {
+          res.writeHead(400, cors); res.end(JSON.stringify({error:"Invalid action. Use enable, disable, or status"}));
+        }
+      } catch(e) {
+        res.writeHead(500, cors); res.end(JSON.stringify({error: e.message}));
+      }
+      return;
+    }
+
     const method = ({"/navigate":"navigate","/click":"click","/type":"type","/extract":"extract","/screenshot":"screenshot","/eval":"eval"})[req.url];
     if (!method) { res.writeHead(404, cors); res.end(JSON.stringify({error:"Unknown"})); return; }
 

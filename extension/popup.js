@@ -6,6 +6,7 @@ const tabInfo = document.getElementById("tabInfo");
 const logBox = document.getElementById("logBox");
 const profileInput = document.getElementById("profileInput");
 const profileBtn = document.getElementById("profileBtn");
+const autostartBtn = document.getElementById("autostartBtn");
 
 const tabs = document.querySelectorAll(".tab");
 const panels = {
@@ -91,6 +92,32 @@ profileBtn.addEventListener("click", () => {
 profileInput.addEventListener("keydown", (e) => {
   if (e.key === "Enter") profileBtn.click();
 });
+
+// Auto-start toggle (POST to bridge server)
+let autostartEnabled = false;
+async function checkAutostart() {
+  try {
+    const r = await fetch("http://127.0.0.1:3001/autostart", { method:"POST", headers:{"Content-Type":"application/json"}, body:'{"action":"status"}' });
+    const d = await r.json();
+    autostartEnabled = d.enabled;
+    autostartBtn.textContent = d.enabled ? "Auto-start: ON" : "Auto-start: OFF";
+    autostartBtn.style.display = "block";
+  } catch(e) { autostartBtn.style.display = "none"; }
+}
+autostartBtn.addEventListener("click", async () => {
+  const action = autostartEnabled ? "disable" : "enable";
+  try {
+    await fetch("http://127.0.0.1:3001/autostart", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({action}) });
+    await checkAutostart();
+    addLog("Auto-start " + (autostartEnabled ? "enabled" : "disabled"));
+  } catch(e) { addLog("Auto-start error: " + e.message); }
+});
+// Check autostart status when connected
+const origSetStatus = setStatus;
+setStatus = function(connected, profile) {
+  origSetStatus(connected, profile);
+  if (connected) checkAutostart(); else autostartBtn.style.display = "none";
+};
 
 // Keep service worker alive while popup is open
 const port = chrome.runtime.connect({ name: "keepAlive" });
