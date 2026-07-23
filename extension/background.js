@@ -172,10 +172,28 @@ async function cmdClick(params) {
   // If coordinates provided, click at those page coordinates (like a human)
   if (x !== undefined && y !== undefined) {
     return await execInTab(tab.id, (cx, cy) => {
-      const el = document.elementFromPoint(cx, cy);
+      // Try elementsFromPoint first (includes shadow DOM)
+      let el = null;
+      if (document.elementsFromPoint) {
+        const all = document.elementsFromPoint(cx, cy);
+        for (const e of all) {
+          // Prefer interactive elements
+          const tag = e.tagName.toLowerCase();
+          if (["button","a","input","select","textarea","material-chip","mat-chip","option","li"].includes(tag)) {
+            el = e; break;
+          }
+        }
+        if (!el) el = all[0];
+      } else {
+        el = document.elementFromPoint(cx, cy);
+      }
       if (!el) throw new Error(`No element at (${cx}, ${cy})`);
       el.scrollIntoView({ behavior: "instant", block: "center" });
-      el.click();
+      try {
+        el.dispatchEvent(new MouseEvent("mousedown", { bubbles: true, cancelable: true, view: window }));
+        el.dispatchEvent(new MouseEvent("mouseup", { bubbles: true, cancelable: true, view: window }));
+        el.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true, view: window }));
+      } catch(e) { el.click(); }
       return { clicked: `(${cx}, ${cy})`, tag: el.tagName, text: (el.textContent || "").trim().slice(0, 100) };
     }, [x, y]);
   }
