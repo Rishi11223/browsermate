@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      width: 320px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #1a1a2e;
+      color: #eee;
+      padding: 16px;
+    }
+    h1 {
+      font-size: 16px;
+      font-weight: 700;
+      color: #ffb300;
+      margin-bottom: 12px;
+    }
+    .status-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 16px;
+      font-size: 13px;
+    }
+    .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #555;
+    }
+    .dot.connected { background: #4caf50; box-shadow: 0 0 6px #4caf5066; }
+    .dot.disconnected { background: #f44336; }
+    .btn {
+      padding: 8px 16px;
+      border: none;
+      border-radius: 4px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      width: 100%;
+      margin-bottom: 8px;
+    }
+    .btn-primary { background: #ffb300; color: #1a1a2e; }
+    .btn-danger { background: #f44336; color: white; }
+    .btn-secondary { background: #2a2a4a; color: #ccc; }
+    .info {
+      font-size: 11px;
+      color: #888;
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid #2a2a4a;
+    }
+    code {
+      background: #22223a;
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-size: 11px;
+      color: #ffb300;
+    }
+    .log-box {
+      background: #22223a;
+      border-radius: 4px;
+      padding: 8px;
+      max-height: 120px;
+      overflow-y: auto;
+      font-size: 11px;
+      font-family: monospace;
+      color: #aaa;
+      margin-top: 8px;
+    }
+    .log-box div { padding: 2px 0; border-bottom: 1px solid #1a1a2e; }
+    .tabs { display: flex; gap: 4px; margin-bottom: 12px; }
+    .tab {
+      flex: 1;
+      padding: 6px;
+      text-align: center;
+      font-size: 12px;
+      background: #22223a;
+      border: none;
+      color: #888;
+      cursor: pointer;
+      border-radius: 4px;
+    }
+    .tab.active { background: #ffb30022; color: #ffb300; }
+  </style>
+</head>
+<body>
+  <h1>BrowseMate</h1>
+
+  <div class="tabs">
+    <button class="tab active" data-tab="control">Control</button>
+    <button class="tab" data-tab="logs">Logs</button>
+  </div>
+
+  <div id="tab-control">
+    <div class="status-row">
+      <span class="dot disconnected" id="statusDot"></span>
+      <span id="statusText">Disconnected</span>
+    </div>
+
+    <button class="btn btn-primary" id="connectBtn">Connect</button>
+    <button class="btn btn-danger" id="disconnectBtn" style="display:none">Disconnect</button>
+
+    <hr style="border: none; border-top: 1px solid #2a2a4a; margin: 12px 0;">
+
+    <div style="margin-bottom:6px;font-size:12px;color:#888">Active tab info:</div>
+    <div id="tabInfo" style="font-size:12px;color:#aaa;word-break:break-all">—</div>
+  </div>
+
+  <div id="tab-logs" style="display:none">
+    <div class="log-box" id="logBox"></div>
+  </div>
+
+  <div class="info">
+    Server: <code>ws://localhost:3002</code><br>
+    Bridge: <code>http://localhost:3001</code>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

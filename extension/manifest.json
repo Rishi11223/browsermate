@@ -1,0 +1,33 @@
+{
+  "manifest_version": 3,
+  "name": "BrowseMate",
+  "version": "1.0.0",
+  "description": "AI-powered browser agent — control Chrome via opencode",
+  "permissions": [
+    "activeTab",
+    "scripting",
+    "storage",
+    "tabs",
+    "webNavigation"
+  ],
+  "host_permissions": ["<all_urls>"],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "run_at": "document_end"
+    }
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "BrowseMate"
+  },
+  "icons": {
+    "16": "icon_16.png",
+    "48": "icon.png",
+    "128": "icon_128.png"
+  }
+}

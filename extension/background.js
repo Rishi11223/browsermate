@@ -1,0 +1,238 @@
+const WS_URL = "ws://localhost:3002";
+let ws = null;
+let reconnectTimer = null;
+let tabStates = {};
+
+function connect() {
+  if (ws && (ws.readyState === 0 || ws.readyState === 1)) return;
+
+  try {
+    ws = new WebSocket(WS_URL);
+  } catch (e) {
+    scheduleReconnect();
+    return;
+  }
+
+  ws.onopen = () => {
+    console.log("[agent] WebSocket connected");
+    chrome.storage.local.set({ connected: true });
+    notifyPopup({ type: "status", connected: true });
+  };
+
+  ws.onclose = () => {
+    console.log("[agent] WebSocket disconnected");
+    chrome.storage.local.set({ connected: false });
+    notifyPopup({ type: "status", connected: false });
+    ws = null;
+    scheduleReconnect();
+  };
+
+  ws.onerror = () => {
+    if (ws) ws.close();
+  };
+
+  ws.onmessage = (event) => {
+    let msg;
+    try {
+      msg = JSON.parse(event.data);
+    } catch {
+      return;
+    }
+
+    if (msg.type === "connected") {
+      console.log("[agent] Bridge:", msg.message);
+      return;
+    }
+
+    if (msg.id && msg.type) {
+      handleCommand(msg).then((result) => {
+        send({ type: "result", id: msg.id, result });
+      }).catch((err) => {
+        send({ type: "error", id: msg.id, error: err.message });
+      });
+    }
+  };
+}
+
+function scheduleReconnect() {
+  if (reconnectTimer) return;
+  reconnectTimer = setTimeout(() => {
+    reconnectTimer = null;
+    connect();
+  }, 3000);
+}
+
+function send(data) {
+  if (ws && ws.readyState === 1) {
+    ws.send(JSON.stringify(data));
+  }
+}
+
+function notifyPopup(data) {
+  chrome.runtime.sendMessage(data).catch(() => {});
+}
+
+async function handleCommand(msg) {
+  const { type, params } = msg;
+
+  switch (type) {
+    case "navigate":
+      return await cmdNavigate(params);
+    case "click":
+      return await cmdClick(params);
+    case "type":
+      return await cmdType(params);
+    case "extract":
+      return await cmdExtract(params);
+    case "screenshot":
+      return await cmdScreenshot(params);
+    case "eval":
+      return await cmdEval(params);
+    default:
+      throw new Error(`Unknown command: ${type}`);
+  }
+}
+
+function getActiveTab() {
+  return new Promise((resolve, reject) => {
+    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+      if (tabs.length === 0) reject(new Error("No active tab"));
+      else resolve(tabs[0]);
+    });
+  });
+}
+
+function execInTab(tabId, fn, args) {
+  return new Promise((resolve, reject) => {
+    chrome.scripting.executeScript(
+      {
+        target: { tabId },
+        func: fn,
+        args: args || [],
+      },
+      (results) => {
+        if (chrome.runtime.lastError) {
+          reject(new Error(chrome.runtime.lastError.message));
+        } else if (results && results[0]) {
+          resolve(results[0].result);
+        } else {
+          reject(new Error("No result from content script"));
+        }
+      }
+    );
+  });
+}
+
+async function cmdNavigate(params) {
+  const url = params.url;
+  if (!url) throw new Error("URL required");
+
+  const tab = await getActiveTab();
+  await new Promise((resolve, reject) => {
+    chrome.tabs.update(tab.id, { url }, () => {
+      if (chrome.runtime.lastError) reject(new Error(chrome.runtime.lastError.message));
+      else resolve();
+    });
+  });
+
+  await new Promise((resolve) => {
+    chrome.tabs.onUpdated.addListener(function listener(tabId, info) {
+      if (tabId === tab.id && info.status === "complete") {
+        chrome.tabs.onUpdated.removeListener(listener);
+        setTimeout(resolve, 500);
+      }
+    });
+  });
+
+  return { url, title: (await getActiveTab()).title };
+}
+
+async function cmdClick(params) {
+  const tab = await getActiveTab();
+  const selector = params.selector;
+  if (!selector) throw new Error("CSS selector required");
+
+  return await execInTab(tab.id, (sel) => {
+    const el = document.querySelector(sel);
+    if (!el) throw new Error(`Element not found: ${sel}`);
+    el.scrollIntoView({ behavior: "instant", block: "center" });
+    el.click();
+    return { clicked: sel, tag: el.tagName, text: (el.textContent || "").trim().slice(0, 100) };
+  }, [selector]);
+}
+
+async function cmdType(params) {
+  const tab = await getActiveTab();
+  const selector = params.selector;
+  const text = params.text;
+  if (!selector) throw new Error("CSS selector required");
+
+  return await execInTab(tab.id, (sel, txt) => {
+    const el = document.querySelector(sel);
+    if (!el) throw new Error(`Element not found: ${sel}`);
+    el.scrollIntoView({ behavior: "instant", block: "center" });
+    el.focus();
+    if (el.tagName === "INPUT" || el.tagName === "TEXTAREA") {
+      el.value = txt;
+      el.dispatchEvent(new Event("input", { bubbles: true }));
+      el.dispatchEvent(new Event("change", { bubbles: true }));
+    } else {
+      el.textContent = txt;
+    }
+    return { typed: txt.slice(0, 50) + (txt.length > 50 ? "..." : "") };
+  }, [selector, text]);
+}
+
+async function cmdExtract(params) {
+  const tab = await getActiveTab();
+  const selector = params.selector;
+  const attr = params.attr || "textContent";
+
+  return await execInTab(tab.id, (sel, at) => {
+    const elements = document.querySelectorAll(sel);
+    return Array.from(elements).map((el) => {
+      if (at === "textContent") return el.textContent.trim();
+      if (at === "href") return el.href || el.getAttribute("href") || "";
+      if (at === "src") return el.src || el.getAttribute("src") || "";
+      return el.getAttribute(at) || el[at] || "";
+    });
+  }, [selector, attr]);
+}
+
+async function cmdScreenshot(params) {
+  const tab = await getActiveTab();
+  return new Promise((resolve, reject) => {
+    chrome.tabs.captureVisibleTab(tab.windowId, { format: "png" }, (dataUrl) => {
+      if (chrome.runtime.lastError) reject(new Error(chrome.runtime.lastError.message));
+      else resolve({ dataUrl });
+    });
+  });
+}
+
+async function cmdEval(params) {
+  const tab = await getActiveTab();
+  const code = params.code;
+  if (!code) throw new Error("JavaScript code required");
+
+  return await execInTab(tab.id, (c) => {
+    return eval(c);
+  }, [code]);
+}
+
+chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+  if (msg.type === "connect") {
+    connect();
+    sendResponse({ ok: true });
+  }
+  if (msg.type === "disconnect") {
+    if (ws) { ws.close(); ws = null; }
+    chrome.storage.local.set({ connected: false });
+    sendResponse({ ok: true });
+  }
+  if (msg.type === "getStatus") {
+    sendResponse({ connected: !!(ws && ws.readyState === 1) });
+  }
+  return true;
+});
+
+connect();
