@@ -8,6 +8,7 @@ const logBox = document.getElementById("logBox");
 const tabs = document.querySelectorAll(".tab");
 const panels = {
   control: document.getElementById("tab-control"),
+  onboard: document.getElementById("tab-onboard"),
   logs: document.getElementById("tab-logs"),
 };
 
@@ -77,6 +78,18 @@ disconnectBtn.addEventListener("click", () => {
 
 // Keep service worker alive while popup is open
 const port = chrome.runtime.connect({ name: "keepAlive" });
+
+// Show onboarding on first install
+chrome.storage.local.get(["onboarded"], (data) => {
+  if (!data.onboarded) {
+    document.getElementById("onboarding").style.display = "block";
+  }
+});
+
+document.getElementById("onboardDone").addEventListener("click", () => {
+  chrome.storage.local.set({ onboarded: true });
+  document.getElementById("onboarding").style.display = "none";
+});
 
 // Get real connection status from background
 chrome.runtime.sendMessage({ type: "getStatus" }, (status) => {

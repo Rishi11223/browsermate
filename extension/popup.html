@@ -5,92 +5,120 @@
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
-      width: 320px;
+      width: 380px;
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       background: #1a1a2e;
       color: #eee;
       padding: 16px;
     }
-    h1 {
-      font-size: 16px;
-      font-weight: 700;
-      color: #ffb300;
-      margin-bottom: 12px;
-    }
-    .status-row {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      margin-bottom: 16px;
-      font-size: 13px;
-    }
-    .dot {
-      width: 10px;
-      height: 10px;
-      border-radius: 50%;
-      background: #555;
-    }
+    h1 { font-size: 16px; font-weight: 700; color: #ffb300; margin-bottom: 12px; }
+    .status-row { display: flex; align-items: center; gap: 8px; margin-bottom: 16px; font-size: 13px; }
+    .dot { width: 10px; height: 10px; border-radius: 50%; background: #555; }
     .dot.connected { background: #4caf50; box-shadow: 0 0 6px #4caf5066; }
     .dot.disconnected { background: #f44336; }
     .btn {
-      padding: 8px 16px;
-      border: none;
-      border-radius: 4px;
-      font-size: 13px;
-      font-weight: 600;
-      cursor: pointer;
-      width: 100%;
-      margin-bottom: 8px;
+      padding: 8px 16px; border: none; border-radius: 4px; font-size: 13px;
+      font-weight: 600; cursor: pointer; width: 100%; margin-bottom: 8px;
     }
     .btn-primary { background: #ffb300; color: #1a1a2e; }
     .btn-danger { background: #f44336; color: white; }
     .btn-secondary { background: #2a2a4a; color: #ccc; }
+    .btn-outline { background: transparent; border: 1px solid #ffb300; color: #ffb300; }
     .info {
-      font-size: 11px;
-      color: #888;
-      margin-top: 12px;
-      padding-top: 12px;
-      border-top: 1px solid #2a2a4a;
+      font-size: 11px; color: #888; margin-top: 12px;
+      padding-top: 12px; border-top: 1px solid #2a2a4a;
     }
-    code {
-      background: #22223a;
-      padding: 2px 6px;
-      border-radius: 3px;
-      font-size: 11px;
-      color: #ffb300;
-    }
+    code { background: #22223a; padding: 2px 6px; border-radius: 3px; font-size: 11px; color: #ffb300; }
     .log-box {
-      background: #22223a;
-      border-radius: 4px;
-      padding: 8px;
-      max-height: 120px;
-      overflow-y: auto;
-      font-size: 11px;
-      font-family: monospace;
-      color: #aaa;
-      margin-top: 8px;
+      background: #22223a; border-radius: 4px; padding: 8px;
+      max-height: 120px; overflow-y: auto; font-size: 11px;
+      font-family: monospace; color: #aaa; margin-top: 8px;
     }
     .log-box div { padding: 2px 0; border-bottom: 1px solid #1a1a2e; }
     .tabs { display: flex; gap: 4px; margin-bottom: 12px; }
     .tab {
-      flex: 1;
-      padding: 6px;
-      text-align: center;
-      font-size: 12px;
-      background: #22223a;
-      border: none;
-      color: #888;
-      cursor: pointer;
-      border-radius: 4px;
+      flex: 1; padding: 6px; text-align: center; font-size: 12px;
+      background: #22223a; border: none; color: #888; cursor: pointer; border-radius: 4px;
     }
     .tab.active { background: #ffb30022; color: #ffb300; }
+
+    /* Onboarding overlay */
+    #onboarding {
+      position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+      background: #1a1a2e; z-index: 100; padding: 20px; overflow-y: auto;
+      display: none;
+    }
+    #onboarding h2 { font-size: 18px; color: #ffb300; margin-bottom: 16px; text-align: center; }
+    #onboarding .step {
+      background: #22223a; border-radius: 8px; padding: 12px; margin-bottom: 12px;
+      border-left: 3px solid #ffb300;
+    }
+    #onboarding .step .num {
+      display: inline-block; width: 22px; height: 22px; line-height: 22px;
+      text-align: center; background: #ffb300; color: #1a1a2e;
+      border-radius: 50%; font-size: 12px; font-weight: 700; margin-right: 8px;
+    }
+    #onboarding .step .title { font-size: 13px; font-weight: 600; color: #fff; margin-bottom: 4px; }
+    #onboarding .step .desc { font-size: 11px; color: #aaa; line-height: 1.5; }
+    #onboarding .step .desc code { font-size: 10px; }
+    .onboard-footer { text-align: center; margin-top: 16px; }
   </style>
 </head>
 <body>
   <h1>BrowseMate</h1>
 
+  <!-- Onboarding -->
+  <div id="onboarding">
+    <h2>Welcome to BrowseMate</h2>
+    <p style="font-size:12px;color:#888;text-align:center;margin-bottom:16px">
+      Control Chrome from AI agents or scripts
+    </p>
+
+    <div class="step">
+      <div class="title"><span class="num">1</span> Start the bridge server</div>
+      <div class="desc">
+        Download and run the server:<br>
+        <code>browsermate-server.exe</code><br>
+        <span style="color:#666">Or if you have Node.js:</span><br>
+        <code>cd server && npm install && node server.js</code>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="title"><span class="num">2</span> Connect</div>
+      <div class="desc">
+        Click <b style="color:#ffb300">Connect</b> below. The dot turns green when connected.
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="title"><span class="num">3</span> Send commands</div>
+      <div class="desc">
+        Use any HTTP client to control Chrome:<br>
+        <code>curl -X POST http://localhost:3001/navigate -d '{"url":"https://...'</code>
+      </div>
+    </div>
+
+    <div class="step" style="border-color:#4caf50">
+      <div class="title"><span class="num" style="background:#4caf50">⚡</span> Available endpoints</div>
+      <div class="desc">
+        <code>/navigate</code> — Go to a URL<br>
+        <code>/click</code> — Click an element<br>
+        <code>/type</code> — Type into an input<br>
+        <code>/extract</code> — Extract page data<br>
+        <code>/screenshot</code> — Take a screenshot<br>
+        <code>/eval</code> — Run JavaScript
+      </div>
+    </div>
+
+    <div class="onboard-footer">
+      <button class="btn btn-primary" id="onboardDone">Got it!</button>
+    </div>
+  </div>
+
   <div class="tabs">
     <button class="tab active" data-tab="control">Control</button>
+    <button class="tab" data-tab="onboard">Setup</button>
     <button class="tab" data-tab="logs">Logs</button>
   </div>
 
@@ -109,13 +137,36 @@
     <div id="tabInfo" style="font-size:12px;color:#aaa;word-break:break-all">—</div>
   </div>
 
+  <div id="tab-onboard" style="display:none">
+    <div id="onboardInline">
+      <div class="step">
+        <div class="title"><span class="num">1</span> Download server</div>
+        <div class="desc">Get the standalone exe from the <a href="https://github.com/Rishi11223/browsermate/releases" target="_blank" style="color:#ffb300">releases page</a> or run <code>npm start</code> from the <code>server/</code> folder.</div>
+      </div>
+      <div class="step">
+        <div class="title"><span class="num">2</span> Run it</div>
+        <div class="desc">Double-click <code>browsermate-server.exe</code> or run <code>node server.js</code>. A console window with server logs will appear.</div>
+      </div>
+      <div class="step">
+        <div class="title"><span class="num">3</span> Click Connect</div>
+        <div class="desc">Go to the <b>Control</b> tab and click Connect. The dot turns green.</div>
+      </div>
+      <div class="step">
+        <div class="title"><span class="num">4</span> Send commands</div>
+        <div class="desc">
+          POST to <code>http://localhost:3001/ENDPOINT</code> with JSON body.<br>
+          <span style="color:#888">Endpoints: navigate, click, type, extract, screenshot, eval</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <div id="tab-logs" style="display:none">
     <div class="log-box" id="logBox"></div>
   </div>
 
   <div class="info">
-    Server: <code>ws://localhost:3002</code><br>
-    Bridge: <code>http://localhost:3001</code>
+    Server: <code>ws://localhost:3002</code> &nbsp;|&nbsp; Bridge: <code>http://localhost:3001</code>
   </div>
 
   <script src="popup.js"></script>
