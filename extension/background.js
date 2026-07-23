@@ -104,6 +104,10 @@ async function handleCommand(msg) {
       return await cmdScreenshot(params);
     case "eval":
       return await cmdEval(params);
+    case "scan":
+      return await cmdScan(params);
+    case "clickById":
+      return await cmdClickById(params);
     default:
       throw new Error(`Unknown command: ${type}`);
   }
@@ -337,6 +341,31 @@ async function cmdEval(params) {
       return "[eval error] " + e.message;
     }
   }, [code]);
+}
+
+async function cmdScan(params) {
+  const tab = await getActiveTab();
+  return await execInTab(tab.id, () => {
+    return new Promise((resolve) => {
+      chrome.runtime.sendMessage({ type: "scanPage" }, (response) => {
+        resolve(response?.registry || []);
+      });
+    });
+  });
+}
+
+async function cmdClickById(params) {
+  const tab = await getActiveTab();
+  const id = params.id;
+  if (id === undefined) throw new Error("Element ID required");
+
+  return await execInTab(tab.id, (elId) => {
+    return new Promise((resolve) => {
+      chrome.runtime.sendMessage({ type: "clickById", id: elId }, (response) => {
+        resolve(response || { error: "No response" });
+      });
+    });
+  }, [id]);
 }
 
 // Keep extension alive with self-healing heartbeat

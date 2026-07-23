@@ -59,7 +59,7 @@ const httpServer = http.createServer((req, res) => {
       return;
     }
 
-    const method = ({"/navigate":"navigate","/click":"click","/type":"type","/extract":"extract","/screenshot":"screenshot","/eval":"eval"})[req.url];
+    const method = ({"/navigate":"navigate","/click":"click","/type":"type","/extract":"extract","/screenshot":"screenshot","/eval":"eval","/scan":"scan","/clickById":"clickById"})[req.url];
     if (!method) { res.writeHead(404, cors); res.end(JSON.stringify({error:"Unknown"})); return; }
 
     // Determine target profile
