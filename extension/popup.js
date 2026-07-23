@@ -52,8 +52,19 @@ chrome.runtime.onMessage.addListener((msg) => {
 });
 
 connectBtn.addEventListener("click", () => {
-  chrome.runtime.sendMessage({ type: "connect" });
   addLog("Connecting...");
+  chrome.runtime.sendMessage({ type: "connect" }, (resp) => {
+    if (chrome.runtime.lastError) {
+      addLog("Error: " + chrome.runtime.lastError.message);
+    } else {
+      addLog("Connect sent: " + JSON.stringify(resp));
+      setTimeout(() => {
+        chrome.runtime.sendMessage({ type: "getStatus" }, (s) => {
+          addLog("Status: " + JSON.stringify(s));
+        });
+      }, 2000);
+    }
+  });
 });
 
 disconnectBtn.addEventListener("click", () => {
