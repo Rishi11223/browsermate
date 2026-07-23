@@ -184,7 +184,7 @@ SETUP - Do this first:
 3. Make sure the BrowseMate extension popup shows "Connected" (green dot)
 4. Then send HTTP POST requests to http://localhost:3001
 
-ENDPOINTS:
+ENDPOINTS (use curl, Python, JavaScript, or any HTTP client):
 - POST /navigate {"url": "..."} - go to a page
 - POST /click {"selector": "..."} - click an element
 - POST /type {"selector": "...", "text": "..."} - type into an input
@@ -192,7 +192,7 @@ ENDPOINTS:
 - POST /screenshot {} - capture the page
 - POST /eval {"code": "..."} - run JavaScript in the page
 
-Start the server first, then send commands.
+Start the server first, then use any tool (opencode, Cursor, Claude Code, ChatGPT, Copilot, curl, Python, etc) to send commands.
         </div>
       </div>
 
@@ -205,7 +205,7 @@ Start the server first, then send commands.
 The BrowseMate bridge server is already running on my computer (localhost:3001 / 3002).
 The extension is connected (If not running then run and connect to browsemate extension). Just send commands.
 
-ENDPOINTS:
+ENDPOINTS (use curl, Python, JavaScript, or any HTTP client):
 - POST /navigate {"url": "..."} - go to a page
 - POST /click {"selector": "..."} - click an element
 - POST /type {"selector": "...", "text": "..."} - type into an input

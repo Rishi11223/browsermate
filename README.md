@@ -3,7 +3,7 @@
 [![Chrome Web Store](https://img.shields.io/badge/Chrome-Extension-4285F4)](https://chrome.google.com/webstore)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
-AI-powered browser agent Chrome extension. Control your real Chrome browser (with signed-in profile) from opencode, curl, Python, or any HTTP client.
+AI-powered browser agent Chrome extension. Let any AI assistant (opencode, Cursor, Claude Code, ChatGPT, Copilot) or HTTP client control your real Chrome browser.
 
 ## Features
 
