@@ -42,6 +42,9 @@ const httpServer = createServer((req, res) => {
   }
 
   let body = "";
+  req.on("error", (err) => {
+    console.error("[server] Request error:", err.message);
+  });
   req.on("data", (chunk) => (body += chunk));
   req.on("end", () => {
     let parsed;
@@ -163,6 +166,14 @@ wsServer.on("connection", (ws) => {
       pending.delete(id);
     }
   });
+});
+
+process.on("uncaughtException", (err) => {
+  console.error("[server] UNCAUGHT:", err.message, err.stack?.slice(0, 200));
+});
+
+process.on("unhandledRejection", (err) => {
+  console.error("[server] UNHANDLED:", err.message);
 });
 
 console.log(`[server] WebSocket on ws://localhost:${WS_PORT}`);
