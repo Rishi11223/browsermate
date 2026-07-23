@@ -345,19 +345,46 @@ async function cmdEval(params) {
 
 async function cmdScan(params) {
   const tab = await getActiveTab();
-  const reqId = Date.now() + Math.random();
-  return await execInTab(tab.id, (rid) => {
-    return new Promise((resolve) => {
-      const handler = (event) => {
-        if (event.source !== window || !event.data || !event.data._bm || event.data.type !== "scanResult" || event.data.id !== rid) return;
-        window.removeEventListener("message", handler);
-        resolve(event.data.registry || []);
-      };
-      window.addEventListener("message", handler);
-      window.postMessage({ _bm: true, type: "scanPage", id: rid }, "*");
-      setTimeout(() => { window.removeEventListener("message", handler); resolve([]); }, 5000);
-    });
-  }, [reqId]);
+  return await execInTab(tab.id, () => {
+    const results = [];
+    let nextId = 0;
+
+    function getRole(el) {
+      const tag = el.tagName.toLowerCase();
+      const role = el.getAttribute("role");
+      if (["a","button"].includes(tag)) return "button";
+      if (tag === "input" || tag === "textarea") return "input";
+      if (role) return role;
+      return tag;
+    }
+
+    function isVisible(el) {
+      const r = el.getBoundingClientRect();
+      if (!r.width || !r.height) return false;
+      const s = window.getComputedStyle(el);
+      if (s.display === "none" || s.visibility === "hidden" || s.opacity === "0") return false;
+      return true;
+    }
+
+    function scan(root, depth) {
+      if (depth > 15) return;
+      for (const el of root.children || []) {
+        if (!el) continue;
+        const tag = el.tagName?.toLowerCase();
+        if (["html","head","body","script","style","meta","link"].includes(tag)) { if (el.children) scan(el, depth); continue; }
+        const id = ++nextId;
+        const r = el.getBoundingClientRect?.() || {};
+        const txt = (el.textContent || "").trim().slice(0, 100);
+        if (txt && isVisible(el)) {
+          results.push({ id, text: txt, role: getRole(el), tag, x: Math.round(r.x||0), y: Math.round(r.y||0), width: Math.round(r.width||0), height: Math.round(r.height||0), depth });
+        }
+        if (el.shadowRoot) scan(el.shadowRoot, depth + 1);
+        if (el.children) scan(el, depth);
+      }
+    }
+    scan(document, 0);
+    return results;
+  });
 }
 
 async function cmdClickById(params) {
