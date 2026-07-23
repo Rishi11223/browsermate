@@ -383,6 +383,7 @@ async function cmdScan(params) {
       }
     }
     scan(document, 0);
+    window.__bmRegistry = results;
     return results;
   });
 }
@@ -391,20 +392,32 @@ async function cmdClickById(params) {
   const tab = await getActiveTab();
   const id = params.id;
   if (id === undefined) throw new Error("Element ID required");
-  const reqId = Date.now() + Math.random();
 
-  return await execInTab(tab.id, (elId, rid) => {
-    return new Promise((resolve) => {
-      const handler = (event) => {
-        if (event.source !== window || !event.data || !event.data._bm || event.data.type !== "clickResult" || event.data.id !== rid) return;
-        window.removeEventListener("message", handler);
-        resolve(event.data.result ? { clicked: event.data.result } : { error: event.data.error });
-      };
-      window.addEventListener("message", handler);
-      window.postMessage({ _bm: true, type: "clickById", id: elId, rid: rid }, "*");
-      setTimeout(() => { window.removeEventListener("message", handler); resolve({ error: "Timeout" }); }, 5000);
-    });
-  }, [id, reqId]);
+  return await execInTab(tab.id, (elId) => {
+    const reg = window.__bmRegistry;
+    if (!reg || !reg.length) throw new Error("No registry. Run /scan first.");
+    const entry = reg.find(e => e.id === elId);
+    if (!entry) throw new Error(`Element ${elId} not found in registry. Re-scan.`);
+    // Find by path
+    function deepGet(root, parts, i) {
+      if (i >= parts.length) return root;
+      if (!root) return null;
+      let el;
+      if (root.querySelector) el = root.querySelector(parts[i]);
+      if (!el && root.shadowRoot) el = root.shadowRoot.querySelector(parts[i]);
+      if (!el) return null;
+      if (i === parts.length - 1) return el;
+      return deepGet(el.shadowRoot || el, parts, i + 1);
+    }
+    const parts = entry.selector ? entry.selector.split(" >>>> ") : [entry.tag || "*"];
+    let el = deepGet(document, parts, 0);
+    if (!el) throw new Error("Element not found on page");
+    el.scrollIntoView({ behavior: "instant", block: "center" });
+    el.dispatchEvent(new MouseEvent("mousedown", { bubbles: true, cancelable: true, view: window }));
+    el.dispatchEvent(new MouseEvent("mouseup", { bubbles: true, cancelable: true, view: window }));
+    el.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true, view: window }));
+    return { clicked: (el.textContent || el.value || "").trim().slice(0, 80) };
+  }, [id]);
 }
 
 // Keep extension alive with self-healing heartbeat
