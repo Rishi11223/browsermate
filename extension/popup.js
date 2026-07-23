@@ -61,8 +61,12 @@ disconnectBtn.addEventListener("click", () => {
   addLog("Disconnected");
 });
 
-chrome.storage.local.get(["connected"], (data) => {
-  setStatus(!!data.connected);
+// Keep service worker alive while popup is open
+const port = chrome.runtime.connect({ name: "keepAlive" });
+
+// Get real connection status from background
+chrome.runtime.sendMessage({ type: "getStatus" }, (status) => {
+  setStatus(!!(status && status.connected));
 });
 
 updateTabInfo();

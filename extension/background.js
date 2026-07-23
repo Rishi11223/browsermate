@@ -219,6 +219,20 @@ async function cmdEval(params) {
   }, [code]);
 }
 
+// Keep service worker alive while popup is open
+let keepAlivePort = null;
+chrome.runtime.onConnect.addListener((port) => {
+  if (port.name === "keepAlive") {
+    keepAlivePort = port;
+    port.onDisconnect.addListener(() => { keepAlivePort = null; });
+  }
+});
+
+function keepAlive() {
+  if (keepAlivePort) setTimeout(keepAlive, 20000);
+}
+keepAlive();
+
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (msg.type === "connect") {
     connect();
