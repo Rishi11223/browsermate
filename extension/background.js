@@ -183,18 +183,17 @@ async function cmdClick(params) {
   if (!selector) throw new Error("Provide selector or coordinates (x, y)");
 
   return await execInTab(tab.id, (sel) => {
-    function qs(sel) {
-      if (!sel.includes(" >>>> ")) return document.querySelector(sel);
-      const parts = sel.split(" >>>> ");
-      let root = document;
-      for (const part of parts) {
-        const el = root.querySelector(part);
-        if (!el) return null;
-        root = el.shadowRoot || el;
+    function deepSearch(root, sel) {
+      try { const e = root.querySelector(sel); if (e) return e; } catch(e) {}
+      for (const el of root.querySelectorAll("*")) {
+        if (el.shadowRoot) {
+          const found = deepSearch(el.shadowRoot, sel);
+          if (found) return found;
+        }
       }
-      return root;
+      return null;
     }
-    const el = qs(sel);
+    const el = deepSearch(document, sel);
     if (!el) throw new Error(`Element not found: ${sel}`);
     el.scrollIntoView({ behavior: "instant", block: "center" });
     el.click();
@@ -209,18 +208,17 @@ async function cmdType(params) {
   if (!selector) throw new Error("CSS selector required");
 
   return await execInTab(tab.id, (sel, txt) => {
-    function qs(sel) {
-      if (!sel.includes(" >>>> ")) return document.querySelector(sel);
-      const parts = sel.split(" >>>> ");
-      let root = document;
-      for (const part of parts) {
-        const el = root.querySelector(part);
-        if (!el) return null;
-        root = el.shadowRoot || el;
+    function deepSearch(root, sel) {
+      try { const e = root.querySelector(sel); if (e) return e; } catch(e) {}
+      for (const el of root.querySelectorAll("*")) {
+        if (el.shadowRoot) {
+          const found = deepSearch(el.shadowRoot, sel);
+          if (found) return found;
+        }
       }
-      return root;
+      return null;
     }
-    const el = qs(sel);
+    const el = deepSearch(document, sel);
     if (!el) throw new Error(`Element not found: ${sel}`);
     el.scrollIntoView({ behavior: "instant", block: "center" });
     el.focus();
@@ -241,18 +239,26 @@ async function cmdExtract(params) {
   const attr = params.attr || "textContent";
 
   return await execInTab(tab.id, (sel, at) => {
-    function qsa(sel) {
-      if (!sel.includes(" >>>> ")) return document.querySelectorAll(sel);
-      const parts = sel.split(" >>>> ");
-      let root = document;
-      for (const part of parts) {
-        const el = root.querySelector(part);
-        if (!el) return [];
-        root = el.shadowRoot || el;
+    // Recursively find elements across shadow DOM boundaries
+    function deepQuery(root, sel) {
+      let results = [];
+      try {
+        results = Array.from(root.querySelectorAll(sel));
+      } catch(e) {}
+      // Also search inside shadow roots
+      const all = root.querySelectorAll("*");
+      for (const el of all) {
+        if (el.shadowRoot) {
+          try {
+            results = results.concat(Array.from(el.shadowRoot.querySelectorAll(sel)));
+          } catch(e) {}
+          // Recurse into nested shadow roots
+          results = results.concat(deepQuery(el.shadowRoot, sel));
+        }
       }
-      return [root];
+      return results;
     }
-    const elements = qsa(sel);
+    const elements = deepQuery(document, sel);
     return Array.from(elements).map((el) => {
       if (at === "textContent") return el.textContent.trim();
       if (at === "href") return el.href || el.getAttribute("href") || "";
