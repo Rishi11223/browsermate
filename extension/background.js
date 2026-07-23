@@ -169,7 +169,19 @@ async function cmdClick(params) {
   if (!selector) throw new Error("CSS selector required");
 
   return await execInTab(tab.id, (sel) => {
-    const el = document.querySelector(sel);
+    // Helper to find elements across shadow DOM boundaries
+    function qs(sel) {
+      if (!sel.includes(" >>>> ")) return document.querySelector(sel);
+      const parts = sel.split(" >>>> ");
+      let root = document;
+      for (const part of parts) {
+        const el = root.querySelector(part);
+        if (!el) return null;
+        root = el.shadowRoot || el;
+      }
+      return root;
+    }
+    const el = qs(sel);
     if (!el) throw new Error(`Element not found: ${sel}`);
     el.scrollIntoView({ behavior: "instant", block: "center" });
     el.click();
@@ -184,7 +196,18 @@ async function cmdType(params) {
   if (!selector) throw new Error("CSS selector required");
 
   return await execInTab(tab.id, (sel, txt) => {
-    const el = document.querySelector(sel);
+    function qs(sel) {
+      if (!sel.includes(" >>>> ")) return document.querySelector(sel);
+      const parts = sel.split(" >>>> ");
+      let root = document;
+      for (const part of parts) {
+        const el = root.querySelector(part);
+        if (!el) return null;
+        root = el.shadowRoot || el;
+      }
+      return root;
+    }
+    const el = qs(sel);
     if (!el) throw new Error(`Element not found: ${sel}`);
     el.scrollIntoView({ behavior: "instant", block: "center" });
     el.focus();
@@ -205,7 +228,18 @@ async function cmdExtract(params) {
   const attr = params.attr || "textContent";
 
   return await execInTab(tab.id, (sel, at) => {
-    const elements = document.querySelectorAll(sel);
+    function qsa(sel) {
+      if (!sel.includes(" >>>> ")) return document.querySelectorAll(sel);
+      const parts = sel.split(" >>>> ");
+      let root = document;
+      for (const part of parts) {
+        const el = root.querySelector(part);
+        if (!el) return [];
+        root = el.shadowRoot || el;
+      }
+      return [root];
+    }
+    const elements = qsa(sel);
     return Array.from(elements).map((el) => {
       if (at === "textContent") return el.textContent.trim();
       if (at === "href") return el.href || el.getAttribute("href") || "";
