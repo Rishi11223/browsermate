@@ -196,13 +196,13 @@ Start the server first, then send commands.
       </div>
 
       <div class="step" style="border-color:#2196f3">
-        <div class="title"><span class="num" style="background:#2196f3">2️⃣</span> Already running — paste this for next sessions</div>
+        <div class="title"><span class="num" style="background:#2196f3">2️⃣</span> Already setup — paste this for next sessions</div>
         <div class="desc" style="font-size:11px">
-          Use this when the server is already running and extension is connected:
+          Use this when the server and extension have been set up before:
         </div>
         <div style="background:#1a1a2e;border:1px solid #3a3a5a;border-radius:4px;padding:8px;margin-top:6px;font-size:10px;font-family:monospace;color:#aaa;word-break:break-all;line-height:1.6;max-height:200px;overflow-y:auto;cursor:pointer" id="promptNext" onclick="navigator.clipboard.writeText(this.textContent.trim()).then(()=>{this.style.borderColor='#2196f3';setTimeout(()=>{this.style.borderColor='#3a3a5a'},2000)}).catch(()=>{})" title="Click to copy">
 The BrowseMate bridge server is already running on my computer (localhost:3001 / 3002).
-The extension is connected. Just send commands.
+The extension is connected (If not running then run and connect to browsemate extension). Just send commands.
 
 ENDPOINTS:
 - POST /navigate {"url": "..."} - go to a page
