@@ -223,7 +223,12 @@ async function cmdEval(params) {
   if (!code) throw new Error("JavaScript code required");
 
   return await execInTab(tab.id, (c) => {
-    return eval(c);
+    try {
+      const fn = new Function(c);
+      return fn();
+    } catch(e) {
+      return "[eval error] " + e.message;
+    }
   }, [code]);
 }
 
