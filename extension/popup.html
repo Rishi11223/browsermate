@@ -215,29 +215,6 @@ ENDPOINTS:
 The bridge is ready. Send commands now.
         </div>
       </div>
-I have a Chrome extension called BrowseMate installed that lets you control my browser.
-
-SETUP - Do this first:
-1. Download the BrowseMate server from: https://github.com/Rishi11223/browsermate/releases
-   Download browsermate-server.exe and save it anywhere on my computer.
-   OR if you have Node.js, use the server/ folder from the extension source.
-2. Run the exe (double-click it) OR run: node server.js
-3. Wait for the console window to show "HTTP on :3001" and "WS on :3002"
-4. Make sure the BrowseMate extension popup shows "Connected" (green dot)
-5. Then send HTTP POST requests to http://localhost:3001
-
-ENDPOINTS:
-- POST /navigate {"url": "..."} - go to a page
-- POST /click {"selector": "..."} - click an element
-- POST /type {"selector": "...", "text": "..."} - type into an input
-- POST /extract {"selector": "...", "attr": "..."} - get data from elements
-- POST /screenshot {} - capture the page
-- POST /eval {"code": "..."} - run JavaScript in the page
-
-Start the server first, then send commands.
-        </div>
-        <div style="font-size:10px;color:#666;margin-top:4px">Click the box above to copy</div>
-      </div>
     </div>
   </div>
 
