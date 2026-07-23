@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "BrowseMate",
   "version": "1.0.0",
-  "description": "AI-powered browser agent — control Chrome via opencode",
+  "description": "AI-powered browser agent — control Chrome from AI assistants, curl, or any HTTP client",
   "permissions": [
     "activeTab",
     "scripting",
