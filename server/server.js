@@ -149,6 +149,11 @@ wsServer.on("connection", (ws) => {
       }
     }
 
+    if (data.type === "ping") {
+      ws.send(JSON.stringify({ type: "pong" }));
+      return;
+    }
+
     if (data.type === "log") {
       console.log(`[extension] ${data.message}`);
     }

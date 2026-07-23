@@ -17,12 +17,14 @@ function connect() {
     console.log("[agent] WebSocket connected");
     chrome.storage.local.set({ connected: true });
     notifyPopup({ type: "status", connected: true });
+    startHeartbeat();
   };
 
   ws.onclose = () => {
     console.log("[agent] WebSocket disconnected");
     chrome.storage.local.set({ connected: false });
     notifyPopup({ type: "status", connected: false });
+    stopHeartbeat();
     ws = null;
     scheduleReconnect();
   };
@@ -219,19 +221,23 @@ async function cmdEval(params) {
   }, [code]);
 }
 
-// Keep service worker alive while popup is open
-let keepAlivePort = null;
-chrome.runtime.onConnect.addListener((port) => {
-  if (port.name === "keepAlive") {
-    keepAlivePort = port;
-    port.onDisconnect.addListener(() => { keepAlivePort = null; });
-  }
-});
+// Keep extension alive with self-healing heartbeat
+let heartbeatTimer = null;
 
-function keepAlive() {
-  if (keepAlivePort) setTimeout(keepAlive, 20000);
+function startHeartbeat() {
+  stopHeartbeat();
+  heartbeatTimer = setInterval(() => {
+    if (ws && ws.readyState === 1) {
+      try { ws.send(JSON.stringify({ type: "ping" })); } catch(e) {}
+    } else if (!ws || ws.readyState === 3) {
+      connect();
+    }
+  }, 10000);
 }
-keepAlive();
+
+function stopHeartbeat() {
+  if (heartbeatTimer) { clearInterval(heartbeatTimer); heartbeatTimer = null; }
+}
 
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (msg.type === "connect") {
