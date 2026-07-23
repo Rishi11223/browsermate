@@ -1,4 +1,4 @@
-const WS_URL = "ws://localhost:3002";
+const WS_URL = "ws://127.0.0.1:3002";
 let ws = null;
 let reconnectTimer = null;
 let tabStates = {};
@@ -29,7 +29,9 @@ function connect() {
     scheduleReconnect();
   };
 
-  ws.onerror = () => {
+  ws.onerror = (e) => {
+    console.error("[agent] WS error:", e.message || "unknown");
+    notifyPopup({ type: "log", message: "WS error: " + (e.message || "Connection failed") });
     if (ws) ws.close();
   };
 
@@ -71,7 +73,11 @@ function send(data) {
 }
 
 function notifyPopup(data) {
-  chrome.runtime.sendMessage(data).catch(() => {});
+  chrome.runtime.sendMessage(data).catch((e) => {
+    if (e.message !== "Could not establish connection. Receiving end does not exist.") {
+      console.warn("[agent] notifyPopup error:", e.message);
+    }
+  });
 }
 
 async function handleCommand(msg) {

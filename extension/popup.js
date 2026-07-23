@@ -49,6 +49,9 @@ chrome.runtime.onMessage.addListener((msg) => {
     setStatus(msg.connected);
     addLog(msg.connected ? "Connected to bridge" : "Disconnected from bridge");
   }
+  if (msg.type === "log") {
+    addLog("[bg] " + msg.message);
+  }
 });
 
 connectBtn.addEventListener("click", () => {
