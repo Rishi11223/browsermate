@@ -92,11 +92,15 @@ const httpServer = createServer((req, res) => {
     }, 30000);
 
     msg._timeout = timeout;
+    console.log("[server] Sending to extension, ws state:", global.extensionWs?.readyState, "pending:", pending.size);
     if (!sendToExtension(global.extensionWs, msg)) {
+      console.log("[server] sendToExtension failed");
       clearTimeout(timeout);
       pending.delete(id);
       res.writeHead(503, headers);
       res.end(JSON.stringify({ error: "Extension disconnected" }));
+    } else {
+      console.log("[server] Sent to extension, waiting for response...");
     }
   });
 });
