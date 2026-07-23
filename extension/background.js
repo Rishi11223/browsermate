@@ -172,21 +172,29 @@ async function cmdClick(params) {
   // If coordinates provided, click at those page coordinates (like a human)
   if (x !== undefined && y !== undefined) {
     return await execInTab(tab.id, (cx, cy) => {
-      // Try elementsFromPoint first (includes shadow DOM)
-      let el = null;
-      if (document.elementsFromPoint) {
-        const all = document.elementsFromPoint(cx, cy);
-        for (const e of all) {
-          // Prefer interactive elements
-          const tag = e.tagName.toLowerCase();
-          if (["button","a","input","select","textarea","material-chip","mat-chip","option","li"].includes(tag)) {
-            el = e; break;
+      // Helper to find deepest element including shadow DOM
+      function findAtPoint(x, y, root) {
+        try {
+          const el = root.elementFromPoint(x, y);
+          if (!el) return null;
+          // Check if element or its ancestors have shadow roots
+          let current = el;
+          while (current) {
+            if (current.shadowRoot) {
+              const inner = current.shadowRoot.elementFromPoint(x, y);
+              // Adjust coordinates relative to the shadow host
+              const rect = current.getBoundingClientRect();
+              if (inner && inner !== current) {
+                return findAtPoint(x - rect.left, y - rect.top, current.shadowRoot) || el;
+              }
+            }
+            current = current.parentElement;
           }
-        }
-        if (!el) el = all[0];
-      } else {
-        el = document.elementFromPoint(cx, cy);
+          return el;
+        } catch(e) { return null; }
       }
+      let el = findAtPoint(cx, cy, document);
+      if (!el) el = document.elementFromPoint(cx, cy);
       if (!el) throw new Error(`No element at (${cx}, ${cy})`);
       el.scrollIntoView({ behavior: "instant", block: "center" });
       try {
