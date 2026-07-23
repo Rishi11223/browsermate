@@ -166,10 +166,23 @@ async function cmdNavigate(params) {
 async function cmdClick(params) {
   const tab = await getActiveTab();
   const selector = params.selector;
-  if (!selector) throw new Error("CSS selector required");
+  const x = params.x;
+  const y = params.y;
+
+  // If coordinates provided, click at those page coordinates (like a human)
+  if (x !== undefined && y !== undefined) {
+    return await execInTab(tab.id, (cx, cy) => {
+      const el = document.elementFromPoint(cx, cy);
+      if (!el) throw new Error(`No element at (${cx}, ${cy})`);
+      el.scrollIntoView({ behavior: "instant", block: "center" });
+      el.click();
+      return { clicked: `(${cx}, ${cy})`, tag: el.tagName, text: (el.textContent || "").trim().slice(0, 100) };
+    }, [x, y]);
+  }
+
+  if (!selector) throw new Error("Provide selector or coordinates (x, y)");
 
   return await execInTab(tab.id, (sel) => {
-    // Helper to find elements across shadow DOM boundaries
     function qs(sel) {
       if (!sel.includes(" >>>> ")) return document.querySelector(sel);
       const parts = sel.split(" >>>> ");
