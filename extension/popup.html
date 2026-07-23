@@ -172,17 +172,22 @@
           Copy this and tell your AI assistant so it can use BrowseMate automatically:
         </div>
         <div style="background:#1a1a2e;border:1px solid #3a3a5a;border-radius:4px;padding:8px;margin-top:6px;font-size:10px;font-family:monospace;color:#aaa;word-break:break-all;line-height:1.6;max-height:200px;overflow-y:auto;cursor:pointer" id="promptBlock" onclick="navigator.clipboard.writeText(this.textContent.trim()).then(()=>{document.querySelector('#promptBlock').style.borderColor='#4caf50';setTimeout(()=>{document.querySelector('#promptBlock').style.borderColor='#3a3a5a'},2000)}).catch(()=>{})" title="Click to copy">
-I have a Chrome extension called BrowseMate installed that lets you control my browser. 
+I have a Chrome extension called BrowseMate installed that lets you control my browser.
 
-To use it, send HTTP POST requests to http://localhost:3001 with these endpoints:
-- /navigate - {url} to go to a page
-- /click - {selector} to click an element  
-- /type - {selector, text} to type into an input
-- /extract - {selector, attr} to get data from elements
-- /screenshot - {} to capture the page
-- /eval - {code} to run JavaScript in the page
+HOW TO CONNECT:
+1. A bridge server is already running on my computer at http://localhost:3001 (HTTP) and ws://localhost:3002 (WebSocket)
+2. The extension is connected to the bridge via WebSocket
+3. Just send HTTP POST requests to http://localhost:3001 and they will be forwarded to my browser through the extension
 
-The bridge server is already running. Just start sending commands.
+END POINTS:
+- POST /navigate with {"url": "https://..."} - go to a page
+- POST /click with {"selector": "css-selector"} - click an element
+- POST /type with {"selector": "css", "text": "value"} - type into an input
+- POST /extract with {"selector": "css", "attr": "textContent"} - get data from elements
+- POST /screenshot with {} - capture the page as PNG
+- POST /eval with {"code": "js-code"} - run JavaScript in the page
+
+The bridge is ready. Start sending commands now.
         </div>
         <div style="font-size:10px;color:#666;margin-top:4px">Click the box above to copy</div>
       </div>
